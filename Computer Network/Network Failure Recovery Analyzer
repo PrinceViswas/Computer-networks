@@ -1,0 +1,127 @@
+import java.util.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+public class NetworkSimulation {
+
+    // Graph as adjacency list
+    private static Map<String, List<String>> graph = new HashMap<>();
+
+    public static void main(String[] args) {
+        createNetwork();
+
+        String source = "Chennai_DC";
+        String destination = "Kolkata_Router";
+
+        drawNetwork();
+        simulateRealTimeRecovery(source, destination);
+    }
+
+    // Create the graph
+    private static void createNetwork() {
+        String[] nodes = {
+            "Chennai_DC", "Mumbai_Router", "Delhi_Router", "Bangalore_DC",
+            "Pune_Router", "Hyderabad_DC", "Kolkata_Router", "Ahmedabad_Router"
+        };
+
+        for (String node : nodes) {
+            graph.put(node, new ArrayList<>());
+        }
+
+        // Add edges (bidirectional)
+        addEdge("Chennai_DC", "Mumbai_Router");
+        addEdge("Mumbai_Router", "Delhi_Router");
+        addEdge("Delhi_Router", "Kolkata_Router");
+        addEdge("Mumbai_Router", "Pune_Router");
+        addEdge("Pune_Router", "Hyderabad_DC");
+        addEdge("Hyderabad_DC", "Bangalore_DC");
+        addEdge("Bangalore_DC", "Chennai_DC");
+        addEdge("Ahmedabad_Router", "Delhi_Router");
+        addEdge("Ahmedabad_Router", "Pune_Router");
+    }
+
+    // Add bidirectional edge
+    private static void addEdge(String a, String b) {
+        graph.get(a).add(b);
+        graph.get(b).add(a);
+    }
+
+    // Simulate failure and rerouting
+    private static void simulateRealTimeRecovery(String source, String destination) {
+        logEvent("Routing data from " + source + " to " + destination + "...");
+
+        List<String> path = shortestPath(source, destination);
+        if (path == null) {
+            logEvent("No available path!");
+            return;
+        }
+
+        logEvent("Initial Path: " + String.join(" → ", path));
+
+        // Simulate random failure in path
+        List<String[]> edges = new ArrayList<>();
+        for (int i = 0; i < path.size() - 1; i++) {
+            edges.add(new String[]{path.get(i), path.get(i + 1)});
+        }
+
+        String[] failedEdge = edges.get(new Random().nextInt(edges.size()));
+        logEvent("Simulated failure on link: (" + failedEdge[0] + ", " + failedEdge[1] + ")");
+
+        removeEdge(failedEdge[0], failedEdge[1]);
+
+        logEvent("Detecting failure and rerouting...");
+        List<String> newPath = shortestPath(source, destination);
+
+        if (newPath != null) {
+            logEvent("Recovered Path: " + String.join(" → ", newPath));
+        } else {
+            logEvent("Network failure: No alternate route available!");
+        }
+    }
+
+    // Remove bidirectional edge
+    private static void removeEdge(String a, String b) {
+        graph.get(a).remove(b);
+        graph.get(b).remove(a);
+    }
+
+    // Simple BFS to find the shortest path
+    private static List<String> shortestPath(String start, String end) {
+        Queue<List<String>> queue = new LinkedList<>();
+        Set<String> visited = new HashSet<>();
+
+        queue.add(Collections.singletonList(start));
+
+        while (!queue.isEmpty()) {
+            List<String> path = queue.poll();
+            String node = path.get(path.size() - 1);
+
+            if (node.equals(end)) return path;
+
+            if (visited.contains(node)) continue;
+            visited.add(node);
+
+            for (String neighbor : graph.getOrDefault(node, new ArrayList<>())) {
+                List<String> newPath = new ArrayList<>(path);
+                newPath.add(neighbor);
+                queue.add(newPath);
+            }
+        }
+
+        return null; // no path found
+    }
+
+    // Logging with timestamp
+    private static void logEvent(String message) {
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        System.out.println("[" + timestamp + "] " + message);
+    }
+
+    // Dummy placeholder for visualization
+    private static void drawNetwork() {
+        System.out.println("Visualizing current network topology...");
+        for (String node : graph.keySet()) {
+            System.out.println(node + " → " + graph.get(node));
+        }
+    }
+}
